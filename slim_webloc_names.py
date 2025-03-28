@@ -1,4 +1,4 @@
-import os, json, requests, toml, plistlib, time, sys, argparse, math, time
+import os, json, requests, toml, plistlib, time, sys, argparse, math, time, shutil
 from typing import List, Dict
 
 def find_webloc_files(directory: str = ".") -> List[str]:
@@ -54,7 +54,7 @@ def simplify_filenames(filepaths: List[str], api_key: str, batch_size: int = 5) 
 
             # simulate errors
             # import random
-            # if (random.random() < 0.3): 
+            # if (random.random() < 0.4): 
             #     raise Exception("Simulated error")
             
             # Create prompt for the API
@@ -122,7 +122,7 @@ def simplify_filenames(filepaths: List[str], api_key: str, batch_size: int = 5) 
             end_time = time.time()
             print ("FAILED (time: {:.2f}s)".format(end_time - start_time))
             batch_dict['attempts'] += 1
-            if batch_dict['attempts'] < 1:
+            if batch_dict['attempts'] < 3:
                 batched_filepaths.append(batch_dict)
             else:
                 failed_instances.extend(batch)
@@ -161,7 +161,9 @@ def rename_webloc_files(simplified_names: Dict[str, str], dry_run: bool = False)
             print(f"Error renaming {original_name}: {e}")
     return failed_instances
 
-def main():
+def main(): 
+    FAILED_INSTANCE_FOLDER = 'FAILED_INSTANCE_FOLDER'
+    shutil.rmtree(FAILED_INSTANCE_FOLDER, ignore_errors = True)
     parser = argparse.ArgumentParser(description="Simplify filenames using OpenRouter API")
     parser.add_argument("--directory", "-d", default=".", help="Directory to search for files")
     parser.add_argument("--batch-size", "-b", type=int, default=50, help="Number of filenames to process in each API call")
@@ -222,10 +224,11 @@ def main():
         script = f'''
 import os
 FAILED_LIST = {failed_instances}
-FOLDER = 'FAILED_INSTANCE_FOLDER'
+FOLDER = '{FAILED_INSTANCE_FOLDER}'
 os.makedirs(FOLDER, exist_ok = True)
-for instance in FAILED_LIST:
-    os.rename(instance, os.path.join(FOLDER, os.path.basename(instance)))
+for instance in FAILED_LIST: 
+    os.makedirs(os.path.dirname(os.path.join(FOLDER, instance)), exist_ok = True)
+    os.rename(instance, os.path.join(FOLDER, instance))
         '''
         with open('failed.py', 'w') as f:
             f.write(script)
